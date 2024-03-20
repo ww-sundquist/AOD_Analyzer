@@ -1,0 +1,6 @@
+# # # # # # # # # # # # #
+# File types to ignore  #
+# # # # # # # # # # # # #
+
+*.root	#data
+*.png	#plots
