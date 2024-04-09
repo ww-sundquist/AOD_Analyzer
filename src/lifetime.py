@@ -23,10 +23,10 @@ for event in events:
 
 # # # # # # # # # # # # # # # # # # # # # #
 
-xMin = 1.0#restrict domain of fit, values taken by eye
-xMax = 55.0
+xMin = 0.1#restrict domain of fit, values taken by eye
+xMax = 50.0
 
-#Fit beta gamma dist'n to f(x) = (A exp(-x) x) - (B exp(-x^2) x) - (C exp(-x) x^2) - (D exp(-x^2) x^2) - (E exp(-x^2) x^3) + (F exp(-x) x^4)
+###Fit beta gamma dist'n to f(x) = (A exp(-x) x) - (B exp(-x^2) x) - (C exp(-x) x^2) - (D exp(-x^2) x^2) - (E exp(-x^2) x^3) + (F exp(-x) x^4)
 
 #Parameter definitions:
 # A : [0]
@@ -60,7 +60,7 @@ banerjee = ROOT.TF1("banerjee", banerjee_func, xMin, xMax, 6)
 #ksbetagamma.Fit(banerjee, "SR", "", xMin, xMax)
 
 
-#Fit beta gamms dist'n to skewed gaussian
+###Fit beta gamms dist'n to skewed gaussian
 
 def skewed_normal_func(x, params):
 	loc = params[0]
@@ -79,7 +79,32 @@ skewed_normal = ROOT.TF1("skewed_normal", skewed_normal_func, xMin, xMax, 4)
 #ksbetagamma.Fit(skewed_normal, "SR", "", xMin, xMax)
 
 
-#Planck's law-type function
+###Fit to exponential decay past peak, then maybe use to initialize planck's law?
+
+def exp_dec_func(x, params):
+	lifetime = params[0]
+	xshift = params[1]
+	res = np.exp(-(x[0] + xshift)/lifetime)
+	return res
+
+expMin = 5.0
+exp_dec = ROOT.TF1("exp_dec", exp_dec_func, expMin, xMax, 2)
+exp_dec.SetParameters(1.0, 0.0)
+#ksbetagamma.Fit(exp_dec, "SR", "", expMin, xMax)
+
+
+###Fit to x^3 below peak, init'ze?
+cubeMax = 3.0
+def cube_func(x, params):
+	res = params[0]*pow(x[0], 3)
+	return res
+
+cube = ROOT.TF1("cube", cube_func, xMin, cubeMax, 1)
+#cube.SetParameters(1.0)
+#ksbetagamma.Fit(cube, "SR", "", xMin, cubeMax)
+
+
+###Planck's law-type function
 def planck_func(x, params):
 	a = params[0]
 	b = params[1]
@@ -91,7 +116,7 @@ def planck_func(x, params):
 	return res
 
 planck = ROOT.TF1("planck", planck_func, xMin, xMax, 2)
-planck.SetParameters(100.0,100.0,0.0)
+planck.SetParameters(2.5*66.0,0.5/5.3)
 ksbetagamma.Fit(planck, "SR", "", xMin, xMax)
 
 
