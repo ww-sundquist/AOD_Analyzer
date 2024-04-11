@@ -94,7 +94,16 @@ print "lifetime : ",lifetime
 pieceCan = ROOT.TCanvas("pieceCan", "title", 800, 800) #add title
 
 def piecewise_func(x, params):
-	
+	x = x[0]
+	H = params[0] #height of central peak at xMid
+	# Gausian parameters
+	w = params[1] #narrowness of gaussian : w = 1/(2sigma^2)
+	k = xMid #center of gaussian
+	if x < xMid:
+		y = H*np.exp(  -1.0*w*( x - k )**2  )
+		return y
+	if x > xMid:
+		y = 
 
 piecewise = ROOT.TF1("piecewise", piecewis_func, xMin, xMas, ) #add no. params
 piecefit = ksbetagamma.Fit(piecewise, "SR", "")
