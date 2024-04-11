@@ -90,8 +90,8 @@ def gauss_func(x,params):
 	return res
 
 gauss = ROOT.TF1("gauss", gauss_func, xMin, xMid, 1)
-ksbetagamma.Fit(gauss, "SR", "")
-gauss.Draw("same")
+#ksbetagamma.Fit(gauss, "SR", "")
+#gauss.Draw("same")
 
 ##Exponential part of function : (xMid, xMax]
 def exp_dec_func(x, params):
@@ -103,7 +103,28 @@ def exp_dec_func(x, params):
 expMin = 3.0
 exp_dec = ROOT.TF1("exp_dec", exp_dec_func, expMin, xMax, 2)
 exp_dec.SetParameters(1.0, 0.0)
-#ksbetagamma.Fit(exp_dec, "SR", "", expMin, xMax)
+ksbetagamma.Fit(exp_dec, "SR", "", expMin, xMax)
+
+fitted_exp = ksbetagamma.GetFunction("exp_dec")
+lifetime = fitted_exp.GetParameter(0)
+print "lifetime : ",lifetime
+
+##product of gaussian and exponential decay
+peak = ksbetagamma.GetBinContent(binMax)
+def gauxp_func(x,params):
+	H = params[0] #peak height
+	a = params[1] #1/(2*sigma^2)
+	b = params[2] #reciprocal of (expoential's) mean
+	k = params[3] #center of peak
+	expArg = ( -1.0*a*(x[0] - k)**2 ) - ( b*x[0] )
+	res = H*np.exp( expArg )
+	return res
+
+gauxp = ROOT.TF1("gauxp", gauxp_func, xMin, xMax, 4)
+gauxp.SetParameters(peak, 1999.8, lifetime, xMid) #2500.0, 2.5
+ksbetagamma.Fit(gauxp, "SR", "")
+gauxp.Draw("same")
+
 
 
 
