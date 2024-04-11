@@ -23,67 +23,77 @@ for event in events:
 
 # # # # # # # # # # # # # # # # # # # # # #
 
-xMin = 0.1#restrict domain of fit, values taken by eye
-xMax = 50.0
+#===> Fit to a piecewise function: exponential decay past the peak and x^3 below it.
 
-###Fit beta gamma dist'n to f(x) = (A exp(-x) x) - (B exp(-x^2) x) - (C exp(-x) x^2) - (D exp(-x^2) x^2) - (E exp(-x^2) x^3) + (F exp(-x) x^4)
+##Start of function abscissa
+def find_first_nonzero_bin(hist):
+	n_bins = hist.GetNbinsX()
+	for bin in range(1, n_bins + 1):
+		if hist.GetBinContent(bin) > 0:
+			return bin
+	return None
 
-#Parameter definitions:
-# A : [0]
-# B : [1]
-# C : [2]
-# D : [3]
-# E : [4]
-# F : [5]
+leftBin = find_first_nonzero_bin(ksbetagamma)
+xMin = ksbetagamma.GetXaxis().GetBinCenter(leftBin)
+print "x coordinate of leftmost histogram bin  :  ",xMin
 
-def banerjee_func(x, params):
-	a = params[0] * math.exp(  -1.0 * x[0]         )  * x[0]
-	b = params[1] * math.exp(  -1.0 * pow(x[0],2)  )  * x[0]
-	c = params[2] * math.exp(  -1.0 * x[0]         )  * pow(x[0],2)
-	d = params[3] * math.exp(  -1.0 * pow(x[0],2)  )  * pow(x[0],2)
-	e = params[4] * math.exp(  -1.0 * pow(x[0],2)  )  * pow(x[0],3)
-	f = params[5] * math.exp(  -1.0 * x[0]         )  * pow(x[0],4)
-	res = a - b - c + d - e + f
+##End of function abscissa
+def find_last_nonzero_bin(hist):
+	n_bins = hist.GetNbinsX()
+	for bin in range(n_bins, 0, -1):
+		if hist.GetBinContent(bin) > 0:
+			return bin
+	return None
+
+rightBin = find_last_nonzero_bin(ksbetagamma)
+xMax = ksbetagamma.GetXaxis().GetBinCenter(rightBin)
+print "x coordinate of rightmost histogram bin :  ",xMax
+
+##Piecewise changeover abscissa
+binMax = ksbetagamma.GetMaximumBin()
+xMid = ksbetagamma.GetXaxis().GetBinCenter(binMax)
+print "x coordinate of histogram max value     :  ",xMid
+
+##Cubic part of function : [xMin, xMid]
+def cube_func(x, params):
+	res = params[0]*pow(x[0], 3)
 	return res
 
-#Initialize parameters
-init_A = 19600
-init_B = 53282.4
-init_C = 5900
-init_D = 62458.5
-init_E = 29200
-init_F = 314
-
-banMin = 0.0
-banMax = 40.0
-
-banerjee = ROOT.TF1("banerjee", banerjee_func, banMin, banMax, 6)
-banerjee.SetParameters(init_A, init_B, init_C, init_D, init_E, init_F)
-
-#ksbetagamma.Fit(banerjee, "SR", "", banMin, banMax)
+cube = ROOT.TF1("cube", cube_func, xMin, (xMid + xMin)/2.0, 1)
+#cube.SetParameters(1.0)
+#ksbetagamma.Fit(cube, "SR", "", xMin, (xMid + xMin)/2.0)
 
 
-###Fit beta gamms dist'n to skewed gaussian
+##Planck's law-type function
+def planck_func(x, params):
+        a = params[0]
+        b = params[1]
+        c = 1.0#params[2]
+        d = 0.0#params[3]
+        k = 0.5
 
-def skewed_normal_func(x, params):
-	loc = params[0]
-	scale = params[1]
-	skew = params[2]
-	
-	arg1 = (skew / (scale * math.sqrt(2)))*(x[0] - loc) #argument of erf
-	arg2 = (-1.0 / (2 * scale**2))*(x[0] - loc)**2 #argument of exp
-	coeff = 1.0 / (scale * math.sqrt(2*math.pi))
-	res = coeff * (1 - math.erf(arg1)) * math.exp(arg2)
+        res = (   a*pow(x[0]+k,3) / (  np.exp( b*(x[0] + k) ) - c  )   ) + d
+        return res
+
+planck = ROOT.TF1("planck", planck_func, xMin, xMid, 2)
+#planck.SetParameters(67,1.0/5.35)
+#ksbetagamma.Fit(planck, "SR", "")
+
+
+##gaussian
+peak = ksbetagamma.GetBinContent(binMax)
+def gauss_func(x,params):
+	A = peak#params[0]
+	B = params[0]
+	k = xMid#params[2] #x-coord of center
+	res = A*np.exp(-1.0*B*(x[0] - k)**2)
 	return res
 
-skewed_normal = ROOT.TF1("skewed_normal", skewed_normal_func, xMin, xMax, 4)
-#skewed_normal.SetParameters(1.0, 1.0, 1.0, 1.0)
+gauss = ROOT.TF1("gauss", gauss_func, xMin, xMid, 1)
+ksbetagamma.Fit(gauss, "SR", "")
+gauss.Draw("same")
 
-#ksbetagamma.Fit(skewed_normal, "SR", "", xMin, xMax)
-
-
-###Fit to exponential decay past peak, then maybe use to initialize planck's law?
-
+##Exponential part of function : (xMid, xMax]
 def exp_dec_func(x, params):
 	lifetime = params[0]
 	xshift = params[1]
@@ -95,54 +105,6 @@ exp_dec = ROOT.TF1("exp_dec", exp_dec_func, expMin, xMax, 2)
 exp_dec.SetParameters(1.0, 0.0)
 #ksbetagamma.Fit(exp_dec, "SR", "", expMin, xMax)
 
-
-###Fit to x^3 below peak, init'ze?
-cubeMin = 0.6
-cubeMax = 2.8
-def cube_func(x, params):
-	res = params[0]*pow(x[0], 3)
-	return res
-
-cube = ROOT.TF1("cube", cube_func, cubeMin, cubeMax, 1)
-#cube.SetParameters(1.0)
-#ksbetagamma.Fit(cube, "SR", "", cubeMin, cubeMax)
-
-
-###Planck's law-type function
-def planck_func(x, params):
-	a = params[0]
-	b = params[1]
-	c = 1.0#params[2]
-	d = 0.0#params[3]
-	k = 0.5
-
-	res = (   a*pow(x[0]+k,3) / (  np.exp( b*(x[0] + k) ) - c  )   ) + d
-	return res
-
-planckMin = 0.7
-planckMax = 40
-
-planck = ROOT.TF1("planck", planck_func, planckMin, planckMax, 2)
-planck.SetParameters(67,1.0/5.35)
-#ksbetagamma.Fit(planck, "SR", "", planckMin, planckMax)
-
-
-###Connor's function
-
-def connor_func(x, params):
-	w = 3.13
-	A = params[0]
-	t = params[1]
-
-	numerator = A*(np.exp(w) + 1.0)*pow(x[0],3)
-	res = numerator / ( pow(t,3) * (  np.exp(x[0]*w/t) + 1  ) )
-
-	return res
-
-connor = ROOT.TF1("connor", connor_func, banMin, banMax, 2)
-connor.SetParameters(1550.0, 1.0)
-connor.Draw()
-#ksbetagamma.Fit(connor, "SR", "", banMin, banMax)
 
 
 # # # # # # # # # # # # # # # # # # # # # #

@@ -120,11 +120,11 @@ def planck_func(x, params):
 	return res
 
 planckMin = 0.7
-planckMax = 40
+planckMax = 3.0
 
 planck = ROOT.TF1("planck", planck_func, planckMin, planckMax, 2)
 planck.SetParameters(67,1.0/5.35)
-#ksbetagamma.Fit(planck, "SR", "", planckMin, planckMax)
+ksbetagamma.Fit(planck, "SR", "", planckMin, planckMax)
 
 
 ###Connor's function
