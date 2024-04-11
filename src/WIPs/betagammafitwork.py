@@ -3,7 +3,7 @@ import ROOT
 import math
 import numpy as np
 
-events =		fwlite.Events("file:output.root")
+events =		fwlite.Events("file:../output.root")
 secondaryVertices =	fwlite.Handle("std::vector<reco::VertexCompositeCandidate>")
 primaryVertices = 	fwlite.Handle("std::vector<reco::Vertex>")
 
