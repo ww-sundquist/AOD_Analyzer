@@ -68,8 +68,8 @@ def gauss_func(x,params):
 	return res
 
 gauss = ROOT.TF1("gauss", gauss_func, xMin, xMid, 1)
-gausfit = ksbetagamma.Fit(gauss, "SR", "")
-gauss.Draw("same")
+#gausfit = ksbetagamma.Fit(gauss, "SR", "")
+#gauss.Draw("same")
 
 ##Exponential part of function : [xMid+0.1, xMax]
 def exp_dec_func(x, params):
@@ -80,14 +80,14 @@ def exp_dec_func(x, params):
 
 exp_dec = ROOT.TF1("exp_dec", exp_dec_func, xMid+0.1, xMax, 2)
 exp_dec.SetParameters(1.0, 0.0)
-expfit = ksbetagamma.Fit(exp_dec, "SR", "")
-exp_dec.Draw("same")
+#expfit = ksbetagamma.Fit(exp_dec, "SR", "")
+#exp_dec.Draw("same")
 
-fitCan.Draw()
+#fitCan.Draw()
 
-fitted_exp = ksbetagamma.GetFunction("exp_dec")
-lifetime = fitted_exp.GetParameter(0)
-print "lifetime : ",lifetime
+#fitted_exp = ksbetagamma.GetFunction("exp_dec")
+#lifetime = fitted_exp.GetParameter(0)
+#print "lifetime : ",lifetime
 
 
 # # # Piecewise by fit to piecewise function
@@ -99,15 +99,23 @@ def piecewise_func(x, params):
 	# Gausian parameters
 	w = params[1] #narrowness of gaussian : w = 1/(2sigma^2)
 	k = xMid #center of gaussian
-	if x < xMid:
+	# Exponential parameters
+	L = params[2] #mean val of exp decay
+	if x < k:
 		y = H*np.exp(  -1.0*w*( x - k )**2  )
-		return y
-	if x > xMid:
-		y = 
+	if x > k:
+		y = ( H*np.exp(xMid / L) )*np.exp(-1.0*x/L)
+	if x == k:
+		y = H
+	return y
 
-piecewise = ROOT.TF1("piecewise", piecewis_func, xMin, xMas, ) #add no. params
+piecewise = ROOT.TF1("piecewise", piecewise_func, xMin, xMax, 3) #add no. params
+piecewise.SetParameters(1.0, 1.0, 1.0, xMid)
 piecefit = ksbetagamma.Fit(piecewise, "SR", "")
 piecewise.Draw()
+
+pieceCan.Draw()
+pieceCan.SaveAs("ksbgfit.png")
 
 
 
