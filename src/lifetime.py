@@ -23,8 +23,9 @@ for event in events:
 
 # # # # # # # # # # # # # # # # # # # # # #
 
-#===> Fit to a piecewise function: exponential decay past the peak and x^3 below it.
+#===> Fit to a piecewise function: exponential decay past the peak and gaussian below it.
 
+fitCan = ROOT.TCanvas("fitCan","Fitting #beta#gamma",800,800)
 ##Start of function abscissa
 def find_first_nonzero_bin(hist):
 	n_bins = hist.GetNbinsX()
@@ -54,33 +55,10 @@ binMax = ksbetagamma.GetMaximumBin()
 xMid = ksbetagamma.GetXaxis().GetBinCenter(binMax)
 print "x coordinate of histogram max value     :  ",xMid
 
-##Cubic part of function : [xMin, xMid]
-def cube_func(x, params):
-	res = params[0]*pow(x[0], 3)
-	return res
 
-cube = ROOT.TF1("cube", cube_func, xMin, (xMid + xMin)/2.0, 1)
-#cube.SetParameters(1.0)
-#ksbetagamma.Fit(cube, "SR", "", xMin, (xMid + xMin)/2.0)
+# # # Piecewise by two fits
 
-
-##Planck's law-type function
-def planck_func(x, params):
-        a = params[0]
-        b = params[1]
-        c = 1.0#params[2]
-        d = 0.0#params[3]
-        k = 0.5
-
-        res = (   a*pow(x[0]+k,3) / (  np.exp( b*(x[0] + k) ) - c  )   ) + d
-        return res
-
-planck = ROOT.TF1("planck", planck_func, xMin, xMid, 2)
-#planck.SetParameters(67,1.0/5.35)
-#ksbetagamma.Fit(planck, "SR", "")
-
-
-##gaussian
+##Gaussian part of function : [xMin, xMid]
 peak = ksbetagamma.GetBinContent(binMax)
 def gauss_func(x,params):
 	A = peak#params[0]
@@ -90,40 +68,37 @@ def gauss_func(x,params):
 	return res
 
 gauss = ROOT.TF1("gauss", gauss_func, xMin, xMid, 1)
-#ksbetagamma.Fit(gauss, "SR", "")
-#gauss.Draw("same")
+gausfit = ksbetagamma.Fit(gauss, "SR", "")
+gauss.Draw("same")
 
-##Exponential part of function : (xMid, xMax]
+##Exponential part of function : [xMid+0.1, xMax]
 def exp_dec_func(x, params):
 	lifetime = params[0]
 	xshift = params[1]
 	res = np.exp(-(x[0] + xshift)/lifetime)
 	return res
 
-expMin = 3.0
-exp_dec = ROOT.TF1("exp_dec", exp_dec_func, expMin, xMax, 2)
+exp_dec = ROOT.TF1("exp_dec", exp_dec_func, xMid+0.1, xMax, 2)
 exp_dec.SetParameters(1.0, 0.0)
-ksbetagamma.Fit(exp_dec, "SR", "", expMin, xMax)
+expfit = ksbetagamma.Fit(exp_dec, "SR", "")
+exp_dec.Draw("same")
+
+fitCan.Draw()
 
 fitted_exp = ksbetagamma.GetFunction("exp_dec")
 lifetime = fitted_exp.GetParameter(0)
 print "lifetime : ",lifetime
 
-##product of gaussian and exponential decay
-peak = ksbetagamma.GetBinContent(binMax)
-def gauxp_func(x,params):
-	H = params[0] #peak height
-	a = params[1] #1/(2*sigma^2)
-	b = params[2] #reciprocal of (expoential's) mean
-	k = params[3] #center of peak
-	expArg = ( -1.0*a*(x[0] - k)**2 ) - ( b*x[0] )
-	res = H*np.exp( expArg )
-	return res
 
-gauxp = ROOT.TF1("gauxp", gauxp_func, xMin, xMax, 4)
-gauxp.SetParameters(peak, 1999.8, lifetime, xMid) #2500.0, 2.5
-ksbetagamma.Fit(gauxp, "SR", "")
-gauxp.Draw("same")
+# # # Piecewise by fit to piecewise function
+pieceCan = ROOT.TCanvas("pieceCan", "title", 800, 800) #add title
+
+def piecewise_func(x, params):
+	
+
+piecewise = ROOT.TF1("piecewise", piecewis_func, xMin, xMas, ) #add no. params
+piecefit = ksbetagamma.Fit(piecewise, "SR", "")
+piecewise.Draw()
 
 
 
