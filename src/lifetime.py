@@ -110,18 +110,69 @@ def piecewise_func(x, params):
 	return y
 
 piecewise = ROOT.TF1("piecewise", piecewise_func, xMin, xMax, 3) #add no. params
-piecewise.SetParameters(1.0, 1.0, 1.0, xMid)
+piecewise.SetParameters(1.0, 1.0, 1.0)
 piecefit = ksbetagamma.Fit(piecewise, "SR", "")
 piecewise.Draw()
 
 pieceCan.Draw()
 pieceCan.SaveAs("ksbgfit.png")
 
+# # # # # # # # # # # # # # # # # # # # # #
 
+# Now that we have our pdf, we can generate a collection of random numbers using it
+
+#start by generating 1,000 random numbers on the range 0 to 40, quantized every 1
+fitted_piece = ksbetagamma.GetFunction("piecewise")
+param0 = fitted_piece.GetParameter(0)
+param1 = fitted_piece.GetParameter(1)
+param2 = fitted_piece.GetParameter(2)
+param3 = fitted_piece.GetParameter(3)
+params = [param0, param1, param2, param3]
+
+stepsize = 1
+
+xVals = np.arange(1,41, stepsize) #list of x-values
+xProbs = [] #list of assoc. probabilities
+xProbs_unnormed = []
+for i in xVals:
+	res = piecewise_func([i], params)
+	xProbs_unnormed.append(res)
+
+#normalize probabilies
+for i in xProbs_unnormed:
+	res = i / sum(xProbs_unnormed)
+	xProbs.append(res)
+
+genNums	= [] #generated numbers
+for i in range(1000):
+	res = np.random.choice(xVals, p=xProbs)
+	genNums.append(res)
+
+print "generated numbers  : ",genNums
+	
+# # # # # # # # # # # # # # # # # # # # # #
+
+# Do the same with our exp. dec. pdf
+
+intermediate = []
+for i in range(1000):
+	eta = 0.0001 #some small number
+	res = np.random.choice(np.arange(0,2,eta))
+	intermediate.append(res)
+
+def getExpNums(tau, dist, stepsize):
+	expNums = []
+	c = 2.998e8 #speed of light
+	for i in dist:
+		lem = tau * c * np.log(i)
+		res = round(lem, math.log10(stepsize))
+		expNums.append(res)
+	return expNums
+
+#take a particular tau
 
 
 # # # # # # # # # # # # # # # # # # # # # #
-
 
 c1 = ROOT.TCanvas( "c1", "c1", 800, 800)
 ksbetagamma.Draw()
