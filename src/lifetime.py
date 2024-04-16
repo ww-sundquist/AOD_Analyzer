@@ -170,6 +170,15 @@ def getExpNums(tau, dist, stepsize):
 	return expNums
 
 #take a particular tau
+tau = 12.0
+expNums = getExpNums(tau, intermediate, stepsize)
+
+#to do: make histograms for each and multiply together, bin by bin
+
+
+
+
+
 
 
 # # # # # # # # # # # # # # # # # # # # # #
