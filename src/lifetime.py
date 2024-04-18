@@ -121,7 +121,11 @@ pieceCan.SaveAs("ksbgfit.png")
 
 # Now that we have our pdf, we can generate a collection of random numbers using it
 
-#start by generating 1,000 random numbers on the range 0 to 40, quantized every 1
+#start by generating 1,000 random numbers on the range startX to endX, quantized every stepsize
+startX = 0.0
+endX = 40.0
+stepsize = 1.0
+
 fitted_piece = ksbetagamma.GetFunction("piecewise")
 param0 = fitted_piece.GetParameter(0)
 param1 = fitted_piece.GetParameter(1)
@@ -129,9 +133,8 @@ param2 = fitted_piece.GetParameter(2)
 param3 = fitted_piece.GetParameter(3)
 params = [param0, param1, param2, param3]
 
-stepsize = 1
 
-xVals = np.arange(1,41, stepsize) #list of x-values
+xVals = np.arange(startX+1,endX+1, stepsize) #list of x-values
 xProbs = [] #list of assoc. probabilities
 xProbs_unnormed = []
 for i in xVals:
@@ -144,12 +147,15 @@ for i in xProbs_unnormed:
 	xProbs.append(res)
 
 genNums	= [] #generated numbers
+nBins = (endX-startX)/stepsize
+genNums_hist = ROOT.TH1D("genNums_hist", "placeholder", int(round(nBins)), startX, endX)
 for i in range(1000):
 	res = np.random.choice(xVals, p=xProbs)
 	genNums.append(res)
+	genNums_hist.Fill(res)
 
 print "generated numbers  : ",genNums
-	
+
 # # # # # # # # # # # # # # # # # # # # # #
 
 # Do the same with our exp. dec. pdf
@@ -161,19 +167,24 @@ for i in range(1000):
 	intermediate.append(res)
 
 def getExpNums(tau, dist, stepsize):
-	expNums = []
+	expNums_hist = ROOT.TH1D("expNums_hist", int(round((endX-startX)/stepsize)), startX, endX)
 	c = 2.998e8 #speed of light
 	for i in dist:
-		lem = tau * c * np.log(i)
-		res = round(lem, math.log10(stepsize))
-		expNums.append(res)
-	return expNums
+		res = tau * c * np.log(i)
+		expNums_hist.Fill(res)
+	return expNums_hist
 
 #take a particular tau
 tau = 12.0
-expNums = getExpNums(tau, intermediate, stepsize)
+expNums_hist = getExpNums(tau, intermediate, stepsize)
 
+genLifetimes = genNums_hist * expNums_hist
+
+c2 = ROOT.TCanvas("c2","c2", 800, 800)
+genLifetims.Draw()
+c2.SaveAs("genLifetimes.png")
 #to do: make histograms for each and multiply together, bin by bin
+
 
 
 
