@@ -36,7 +36,7 @@ def find_first_nonzero_bin(hist):
 
 leftBin = find_first_nonzero_bin(ksbetagamma)
 xMin = ksbetagamma.GetXaxis().GetBinCenter(leftBin)
-print "x coordinate of leftmost histogram bin  :  ",xMin
+#print "x coordinate of leftmost histogram bin  :  ",xMin
 
 ##End of function abscissa
 def find_last_nonzero_bin(hist):
@@ -48,12 +48,12 @@ def find_last_nonzero_bin(hist):
 
 rightBin = find_last_nonzero_bin(ksbetagamma)
 xMax = ksbetagamma.GetXaxis().GetBinCenter(rightBin)
-print "x coordinate of rightmost histogram bin :  ",xMax
+#print "x coordinate of rightmost histogram bin :  ",xMax
 
 ##Piecewise changeover abscissa
 binMax = ksbetagamma.GetMaximumBin()
 xMid = ksbetagamma.GetXaxis().GetBinCenter(binMax)
-print "x coordinate of histogram max value     :  ",xMid
+#print "x coordinate of histogram max value     :  ",xMid
 
 
 # # # Piecewise by two fits
@@ -125,6 +125,7 @@ pieceCan.SaveAs("ksbgfit.png")
 startX = 0.0
 endX = 40.0
 stepsize = 1.0
+samplesize = 10000
 
 fitted_piece = ksbetagamma.GetFunction("piecewise")
 param0 = fitted_piece.GetParameter(0)
@@ -148,42 +149,62 @@ for i in xProbs_unnormed:
 
 genNums	= [] #generated numbers
 nBins = (endX-startX)/stepsize
-genNums_hist = ROOT.TH1D("genNums_hist", "placeholder", int(round(nBins)), startX, endX)
-for i in range(1000):
+genNums_hist = ROOT.TH1D("genNums_hist", "#beta#gamma", int(round(nBins)), startX, endX)
+for i in range(samplesize):
 	res = np.random.choice(xVals, p=xProbs)
 	genNums.append(res)
 	genNums_hist.Fill(res)
 
-print "generated numbers  : ",genNums
+#print "generated numbers  : ",genNums
 
 # # # # # # # # # # # # # # # # # # # # # #
 
 # Do the same with our exp. dec. pdf
 
 intermediate = []
-for i in range(1000):
-	eta = 0.0001 #some small number
-	res = np.random.choice(np.arange(0,2,eta))
+for i in range(samplesize):
+	res = np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True ))
 	intermediate.append(res)
 
-def getExpNums(tau, dist, stepsize):
-	expNums_hist = ROOT.TH1D("expNums_hist", int(round((endX-startX)/stepsize)), startX, endX)
-	c = 2.998e8 #speed of light
+def getExpNums(tau, dist, startX, endX, nBins):
+	expNums_hist = ROOT.TH1D("expNums_hist", "Exponential decay", int(round(nBins)), startX, endX)
+	c = 1 #speed of light
 	for i in dist:
-		res = tau * c * np.log(i)
+		res = -1.0 * tau * c * np.log(i)
+		#print "i : ",i,"  | res : ",res
 		expNums_hist.Fill(res)
 	return expNums_hist
 
 #take a particular tau
 tau = 12.0
-expNums_hist = getExpNums(tau, intermediate, stepsize)
+expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
 
 genLifetimes = genNums_hist * expNums_hist
 
+#draw hists
 c2 = ROOT.TCanvas("c2","c2", 800, 800)
-genLifetims.Draw()
+
+genNums_hist.SetLineColor(ROOT.kRed)
+#genNums_hist.SetFillColor(ROOT.kRed)
+#genNums_hist.SetFillStyle(3003)
+genNums_hist.Draw("same")
+
+expNums_hist.SetLineColor(ROOT.kBlue)
+#expNums_hist.SetFillColor(ROOT.kBlue)
+#expNums_hist.SetFillStyle(3005)
+expNums_hist.Draw("same")
+
+genLifetimes.SetLineColor(ROOT.kBlack)
+genLifetimes.SetFillColor(ROOT.kBlack)
+genLifetimes.SetFillStyle(3003)
+genLifetimes.Scale(0.001)
+genLifetimes.SetTitle("Product (scaled by 1/1000)")
+genLifetimes.Draw("hist same")
+
+legend2 = c2.BuildLegend(0.7,0.7,0.9,0.9,"Distributions")
+c2.Draw()
 c2.SaveAs("genLifetimes.png")
-#to do: make histograms for each and multiply together, bin by bin
+
 
 
 
