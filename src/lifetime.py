@@ -202,10 +202,13 @@ genLifetimes.SetTitle("Product (scaled by 1/1000)")
 genLifetimes.Draw("hist same")
 
 legend2 = c2.BuildLegend(0.7,0.7,0.9,0.9,"Distributions")
+c2.SetTitle("Generating lifetime distributions")
 c2.Draw()
 c2.SaveAs("genLifetimes.png")
 
-
+#to do:
+# - find chi-square comparison between getLifetimes and experiment
+# - loop over different tau values and optimize
 
 
 
