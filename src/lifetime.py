@@ -182,7 +182,7 @@ expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
 genLifetimes = genNums_hist * expNums_hist
 
 #draw hists
-c2 = ROOT.TCanvas("c2","c2", 800, 800)
+c2 = ROOT.TCanvas("c2","c2", 1000, 800)
 
 genNums_hist.SetLineColor(ROOT.kRed)
 #genNums_hist.SetFillColor(ROOT.kRed)
@@ -202,6 +202,7 @@ genLifetimes.SetTitle("Product (scaled by 1/1000)")
 genLifetimes.Draw("hist same")
 
 legend2 = c2.BuildLegend(0.7,0.7,0.9,0.9,"Distributions")
+genNums_hist.SetTitle("Generating lifetime distributions; #beta#gamma c#tau (1/MeV); N_{events}")
 c2.SetTitle("Generating lifetime distributions")
 c2.Draw()
 c2.SaveAs("genLifetimes.png")
