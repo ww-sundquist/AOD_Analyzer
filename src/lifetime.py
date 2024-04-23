@@ -180,7 +180,7 @@ def getExpNums(tau, dist, startX, endX, nBins):
 	return expNums_hist
 
 #take a particular tau
-tau = 12.0
+tau = 10.0**(-2)#12.0
 expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
 
 genLifetimes = genNums_hist * expNums_hist
@@ -229,11 +229,13 @@ for event in events:
 		ksdist_hist.Fill(dist)
 		#print "got one!"
 
-exp_norm = ksdist_hist.Clone("exp_norm")
-exp_norm.Scale(1./exp_norm.Integral(), "width")
+def normalize(hist):
+	hist.Scale(1./hist.Integral(0,100,"width"))
+	return hist
 
-gen_norm = genLifetimes.Clone(gen_norm)
-gen_norm.Scale(1./gen_norm.Integra(), "width")
+exp_norm = normalize(ksdist_hist)
+
+gen_norm = normalize(genLifetimes)
 
 c = ROOT.TCanvas( "c", "c", 800, 800 )
 
@@ -257,7 +259,7 @@ c.SaveAs("exp_and_gen.png")
 
 chi2 = genLifetimes.Chi2Test(ksdist_hist , "UU" )
 print "-------\nChi-squared value:  ",chi2
-
+print "-------\nexp_norm area:  ",exp_norm.Integral(),"    gen_norm area:  ",gen_norm.Integral()
 
 #to do:
 # - find chi-square comparison between getLifetimes and experiment
