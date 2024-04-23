@@ -10,6 +10,7 @@ primaryVertices = 	fwlite.Handle("std::vector<reco::Vertex>")
 #make historgram of \beta\gamma values
 ksbetagamma = ROOT.TH1D("ksbetagamma", "K-shorts ; #beta#gamma", 416, 0, 52)
 
+ksNum = 0 #number of k-shorts
 events.toBegin()
 for event in events:
 	event.getByLabel("SecondaryVerticesFromLooseTracks", "Kshort", secondaryVertices)
@@ -19,7 +20,10 @@ for event in events:
 		mass = vertex.mass()
 		betagamma = three_momentum / mass
 		ksbetagamma.Fill(betagamma)
+		ksNum = ksNum + 1
 
+
+print "ksNum :  ",ksNum
 
 # # # # # # # # # # # # # # # # # # # # # #
 
@@ -125,7 +129,7 @@ pieceCan.SaveAs("ksbgfit.png")
 startX = 0.0
 endX = 40.0
 stepsize = 1.0
-samplesize = 10000
+samplesize = ksNum
 
 fitted_piece = ksbetagamma.GetFunction("piecewise")
 param0 = fitted_piece.GetParameter(0)
@@ -181,6 +185,9 @@ expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
 
 genLifetimes = genNums_hist * expNums_hist
 
+#scale genLifetimes
+enLifetimes = genLifetimes.Scale(0.001)
+
 #draw hists
 c2 = ROOT.TCanvas("c2","c2", 1000, 800)
 
@@ -197,7 +204,6 @@ expNums_hist.Draw("same")
 genLifetimes.SetLineColor(ROOT.kBlack)
 genLifetimes.SetFillColor(ROOT.kBlack)
 genLifetimes.SetFillStyle(3003)
-genLifetimes.Scale(0.001)
 genLifetimes.SetTitle("Product (scaled by 1/1000)")
 genLifetimes.Draw("hist same")
 
@@ -207,10 +213,13 @@ c2.SetTitle("Generating lifetime distributions")
 c2.Draw()
 c2.SaveAs("genLifetimes.png")
 
+#unscale genLifetimes
+genLifetimes.Scale(1000)
 
 #get 'experimentat' \bega\gamma c\tau
 ksdist_hist = ROOT.TH1D("ksdist_hist","3D Kshort SV-PV separations; Distance [cm]; N_{events}", 100, 0, 50)
 
+events.toBegin()
 for event in events:
 	event.getByLabel("offlinePrimaryVertices", primaryVertices)
 	pv = primaryVertices.product()[0] #get the first PV
@@ -218,16 +227,29 @@ for event in events:
 	for vertex in secondaryVertices.product():
 		dist = ( (pv.x() - vertex.vx())**2 + (pv.y() - vertex.vy())**2 + (pv.z() - vertex.vz())**2)**(0.5) #pythagoras
 		ksdist_hist.Fill(dist)
+		#print "got one!"
+
+exp_norm = ksdist_hist.Clone("exp_norm")
+exp_norm.Scale(1./exp_norm.Integral(), "width")
+
+gen_norm = genLifetimes.Clone(gen_norm)
+gen_norm.Scale(1./gen_norm.Integra(), "width")
 
 c = ROOT.TCanvas( "c", "c", 800, 800 )
 
-ksdist_hist.Draw("hist same")
-ksdist_hist.SetLineColor(ROOT.kRed)
-ksdist_hist.SetFillStyle(3003)
+#ksdist_hist.Draw("hist same")
+#ksdist_hist.SetLineColor(ROOT.kRed)
+#ksdist_hist.SetFillStyle(3003)
 
-genLifetimes.Draw("hist same")
-genLifetimes.SetLineColor(ROOT.kBlue)
-genLifetimes.SetFillStyle(3003)
+exp_norm.SetLineColor(ROOT.kRed)
+exp_norm.Draw("hist same")
+
+#genLifetimes.Draw("hist same")
+#genLifetimes.SetLineColor(ROOT.kBlue)
+#genLifetimes.SetFillStyle(3003)
+
+gen_norm.SetLineColor(ROOT.kBlue)
+gen_norm.Draw("hist same")
 
 ksdist_hist.SetTitle("Generated and experimental lifetimes; #beta #gamma c #tau (1/MeV); N_{events}")
 c.SaveAs("exp_and_gen.png")
