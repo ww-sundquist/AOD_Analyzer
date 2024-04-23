@@ -207,6 +207,36 @@ c2.SetTitle("Generating lifetime distributions")
 c2.Draw()
 c2.SaveAs("genLifetimes.png")
 
+
+#get 'experimentat' \bega\gamma c\tau
+ksdist_hist = ROOT.TH1D("ksdist_hist","3D Kshort SV-PV separations; Distance [cm]; N_{events}", 100, 0, 50)
+
+for event in events:
+	event.getByLabel("offlinePrimaryVertices", primaryVertices)
+	pv = primaryVertices.product()[0] #get the first PV
+	event.getByLabel("SecondaryVerticesFromLooseTracks", "Kshort", secondaryVertices)
+	for vertex in secondaryVertices.product():
+		dist = ( (pv.x() - vertex.vx())**2 + (pv.y() - vertex.vy())**2 + (pv.z() - vertex.vz())**2)**(0.5) #pythagoras
+		ksdist_hist.Fill(dist)
+
+c = ROOT.TCanvas( "c", "c", 800, 800 )
+
+ksdist_hist.Draw("hist same")
+ksdist_hist.SetLineColor(ROOT.kRed)
+ksdist_hist.SetFillStyle(3003)
+
+genLifetimes.Draw("hist same")
+genLifetimes.SetLineColor(ROOT.kBlue)
+genLifetimes.SetFillStyle(3003)
+
+ksdist_hist.SetTitle("Generated and experimental lifetimes; #beta #gamma c #tau (1/MeV); N_{events}")
+c.SaveAs("exp_and_gen.png")
+
+
+chi2 = genLifetimes.Chi2Test(ksdist_hist , "UU" )
+print "-------\nChi-squared value:  ",chi2
+
+
 #to do:
 # - find chi-square comparison between getLifetimes and experiment
 # - loop over different tau values and optimize
