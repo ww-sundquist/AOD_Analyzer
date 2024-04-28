@@ -165,8 +165,8 @@ nBins = (endX-startX)/stepsize
 
 
 # # # # # # # # # # # # # # # # # # # # # #
-	
-# I want to generate 3 distributions
+
+# Test case:  I want to generate 3 distributions
 ##	1. For samplesize number of instances, pick a number on [0,1] with equal probability, take the natural log and multiply by c\tau
 ##	2. For samplesize number of instances, pick a number on [startX,endX] with probability density function given by my piecewise_fun()
 ##	3. For samplesize number of instances, (A) pick a number on [startX,endX] with pdf given by my piecewise_fun(); (B) pick a number on [0,1] with equal probability, take the natural log and multiply by c\tau; and (C) multiply the results of A and B together
@@ -176,7 +176,7 @@ ln_hist = ROOT.TH1D("ln_hist", "Exponential decay distribution", int(round(nBins
 genDist_hist = ROOT.TH1D("genDist_hist", "Generated K-short lifetime disribution", int(round(nBins)), startX, endX) #generated k-short lifetimes
 
 #take a particular tau
-tau = 8.95**(-11.)#12.0 #seconds
+tau = 10*8.95**(-11.)#12.0 #seconds
 
 for i in range(samplesize):
 
@@ -186,11 +186,11 @@ for i in range(samplesize):
 	c = 2.998*(10.0**8.0) #meters/second
 	ln = -1.0 * c * tau * np.log( np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True )) )
 	ln_hist.Fill(ln)
-	print "ln : ",ln
+	#print "ln : ",ln
 
 	gen = bg*ln
 	genDist_hist.Fill(gen)
-	print "Gen : ",gen
+	#print "Gen : ",gen
 
 #get 'experimentat' \bega\gamma c\tau
 ksdist_hist = ROOT.TH1D("ksdist_hist","3D Kshort SV-PV separations; Distance [cm]; N_{events}", int(round(nBins)), startX, endX)
@@ -206,7 +206,7 @@ for event in events:
 			dist = ( (pv.x() - vertex.vx())**2 + (pv.y() - vertex.vy())**2 + (pv.z() - vertex.vz())**2)**(0.5) #pythagoras
 			#ksdist_hist.Fill(dist)
 			ksdist_hist.Fill(dist/100.) #try converting cm to m
-		counter = counter + 1
+			counter = counter + 1
 	else:
 		break
 
@@ -217,35 +217,71 @@ genDist_hist.Draw("hist same")
 ksdist_hist.SetLineColor(ROOT.kRed)
 ksdist_hist.Draw("hist same")
 c_compare.Draw()
+c_compare.SaveAs("gen_vs_exp_lifetimedist.png")
+
+chi2 = genDist_hist.Chi2Test(ksdist_hist , "UU" )
+print "-------\nChi-squared value:  ",chi2
+
+# # # # # # # # # # # # # # # # # # # # # #
+
+# reproduce above test case in functions that can be called iteratively to generate chi2-dist'n
+
+def generateDist(tau, samplesize, startX, endX):
+	genDist_hist = ROOT.TH1D("genDist_hist", "Generated K-short lifetime disribution", int(round(nBins)), startX, endX) #generated k-short lifetimes
+	
+	for count in range(samplesize):
+
+		bg = np.random.choice(xVals, p=xProbs) #\beta\gamma value generated from pdf of best fit
+
+		c = 2.998*(10.0**8.0) #meters/second
+		ln = -1.0 * c * tau * np.log( np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True )) )
+	
+		gen = bg*ln
+		genDist_hist.Fill(gen)
+
+	return genDist_hist
+
+def getChi2(tau, ksdist_hist, samplesize, startX, endX):
+	genDist_hist = generateDist(tau, samplesize, startX, endX)
+	chi2 = genDist_hist.Chi2Test( ksdist_hist , "UU" )
+	return chi2
+
+# - - - - - - - - - - - - - - - - - - - - #
+
+#establish the range of lifetime values over which we are searching
+
+
+
+# # # # # # # # # # # # # # # # # # # # # #
 
 # Take a look at the exp dec dist
-c_ed = ROOT.TCanvas( "c_ed", "c_ed", 800, 800 )
-ln_hist.SetFillStyle(3005)
-ln_hist.Draw("hist")
-c_ed.Draw()
+#c_ed = ROOT.TCanvas( "c_ed", "c_ed", 800, 800 )
+#ln_hist.SetFillStyle(3005)
+#ln_hist.Draw("hist")
+#c_ed.Draw()
 
 # # # # # # # # # # # # # # # # # # # # # #
 
 
 # Do the same with our exp. dec. pdf
+#
+#intermediate = []
+#for i in range(samplesize):
+#	res = np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True ))
+#	intermediate.append(res)
 
-intermediate = []
-for i in range(samplesize):
-	res = np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True ))
-	intermediate.append(res)
-
-def getExpNums(tau, dist, startX, endX, nBins):
-	expNums_hist = ROOT.TH1D("expNums_hist", "Exponential decay", int(round(nBins)), startX, endX)
-	c = 2.998*(10**8) #speed of light
-	for i in dist:
-		res = -1.0 * tau * c * np.log(i)
-		#print "i : ",i,"  | res : ",res
-		expNums_hist.Fill(res)
-	return expNums_hist
+#def getExpNums(tau, dist, startX, endX, nBins):
+#	expNums_hist = ROOT.TH1D("expNums_hist", "Exponential decay", int(round(nBins)), startX, endX)
+#	c = 2.998*(10**8) #speed of light
+#	for i in dist:
+#		res = -1.0 * tau * c * np.log(i)
+#		#print "i : ",i,"  | res : ",res
+#		expNums_hist.Fill(res)
+#	return expNums_hist
 
 #take a particular tau
-tau = 10.0**(-10.)#12.0
-expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
+#tau = 10.0**(-10.)#12.0
+#expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
 
 #genLifetimes = genNums_hist * expNums_hist
 
