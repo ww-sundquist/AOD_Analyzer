@@ -19,6 +19,7 @@ for event in events:
 		three_momentum = (   ( vertex.px() )**2 + ( vertex.py() )**2 + ( vertex.pz() )**2   )**(0.5)
 		mass = vertex.mass()
 		betagamma = three_momentum / mass
+		#betagamma = betagamma * 2.998*10.**8. #unitless
 		ksbetagamma.Fill(betagamma)
 		ksNum = ksNum + 1
 
@@ -127,9 +128,9 @@ pieceCan.SaveAs("ksbgfit.png")
 
 #start by generating 1,000 random numbers on the range startX to endX, quantized every stepsize
 startX = 0.0
-endX = 40.0
-stepsize = 1.0
-samplesize = ksNum
+endX = 2.0 #40.0
+stepsize = 0.1 #1.0
+samplesize = 1000#ksNum
 
 fitted_piece = ksbetagamma.GetFunction("piecewise")
 param0 = fitted_piece.GetParameter(0)
@@ -139,7 +140,8 @@ param3 = fitted_piece.GetParameter(3)
 params = [param0, param1, param2, param3]
 
 
-xVals = np.arange(startX+1,endX+1, stepsize) #list of x-values
+#xVals = np.arange(startX+1,endX+1, stepsize) #list of x-values
+xVals = np.linspace(startX, endX, samplesize) #list of x-values
 xProbs = [] #list of assoc. probabilities
 xProbs_unnormed = []
 for i in xVals:
@@ -153,15 +155,77 @@ for i in xProbs_unnormed:
 
 genNums	= [] #generated numbers
 nBins = (endX-startX)/stepsize
-genNums_hist = ROOT.TH1D("genNums_hist", "#beta#gamma", int(round(nBins)), startX, endX)
-for i in range(samplesize):
-	res = np.random.choice(xVals, p=xProbs)
-	genNums.append(res)
-	genNums_hist.Fill(res)
+#genNums_hist = ROOT.TH1D("genNums_hist", "#beta#gamma", int(round(nBins)), startX, endX)
+#for i in range(samplesize):
+#	res = np.random.choice(xVals, p=xProbs)
+#	genNums.append(res)
+#	genNums_hist.Fill(res)
 
 #print "generated numbers  : ",genNums
 
+
 # # # # # # # # # # # # # # # # # # # # # #
+	
+# I want to generate 3 distributions
+##	1. For samplesize number of instances, pick a number on [0,1] with equal probability, take the natural log and multiply by c\tau
+##	2. For samplesize number of instances, pick a number on [startX,endX] with probability density function given by my piecewise_fun()
+##	3. For samplesize number of instances, (A) pick a number on [startX,endX] with pdf given by my piecewise_fun(); (B) pick a number on [0,1] with equal probability, take the natural log and multiply by c\tau; and (C) multiply the results of A and B together
+
+bg_hist = ROOT.TH1D("bg_hist", "#beta#gamma distribution", int(round(nBins)), startX, endX) #beta gamma
+ln_hist = ROOT.TH1D("ln_hist", "Exponential decay distribution", int(round(nBins)), startX, endX) #exponential decay
+genDist_hist = ROOT.TH1D("genDist_hist", "Generated K-short lifetime disribution", int(round(nBins)), startX, endX) #generated k-short lifetimes
+
+#take a particular tau
+tau = 8.95**(-11.)#12.0 #seconds
+
+for i in range(samplesize):
+
+	bg = np.random.choice(xVals, p=xProbs) #\beta\gamma value generated from pdf of best fit
+	bg_hist.Fill(bg)
+
+	c = 2.998*(10.0**8.0) #meters/second
+	ln = -1.0 * c * tau * np.log( np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True )) )
+	ln_hist.Fill(ln)
+	print "ln : ",ln
+
+	gen = bg*ln
+	genDist_hist.Fill(gen)
+	print "Gen : ",gen
+
+#get 'experimentat' \bega\gamma c\tau
+ksdist_hist = ROOT.TH1D("ksdist_hist","3D Kshort SV-PV separations; Distance [cm]; N_{events}", int(round(nBins)), startX, endX)
+
+events.toBegin()
+counter = 0
+for event in events:
+	if counter < 1000:
+		event.getByLabel("offlinePrimaryVertices", primaryVertices)
+		pv = primaryVertices.product()[0] #get the first PV
+		event.getByLabel("SecondaryVerticesFromLooseTracks", "Kshort", secondaryVertices)
+		for vertex in secondaryVertices.product():
+			dist = ( (pv.x() - vertex.vx())**2 + (pv.y() - vertex.vy())**2 + (pv.z() - vertex.vz())**2)**(0.5) #pythagoras
+			#ksdist_hist.Fill(dist)
+			ksdist_hist.Fill(dist/100.) #try converting cm to m
+		counter = counter + 1
+	else:
+		break
+
+# Print gen distribution alongside experiment
+c_compare = ROOT.TCanvas( "c_compare", "c_compare", 1000, 1000 )
+genDist_hist.SetLineColor(ROOT.kBlue)
+genDist_hist.Draw("hist same")
+ksdist_hist.SetLineColor(ROOT.kRed)
+ksdist_hist.Draw("hist same")
+c_compare.Draw()
+
+# Take a look at the exp dec dist
+c_ed = ROOT.TCanvas( "c_ed", "c_ed", 800, 800 )
+ln_hist.SetFillStyle(3005)
+ln_hist.Draw("hist")
+c_ed.Draw()
+
+# # # # # # # # # # # # # # # # # # # # # #
+
 
 # Do the same with our exp. dec. pdf
 
@@ -172,7 +236,7 @@ for i in range(samplesize):
 
 def getExpNums(tau, dist, startX, endX, nBins):
 	expNums_hist = ROOT.TH1D("expNums_hist", "Exponential decay", int(round(nBins)), startX, endX)
-	c = 1 #speed of light
+	c = 2.998*(10**8) #speed of light
 	for i in dist:
 		res = -1.0 * tau * c * np.log(i)
 		#print "i : ",i,"  | res : ",res
@@ -180,86 +244,95 @@ def getExpNums(tau, dist, startX, endX, nBins):
 	return expNums_hist
 
 #take a particular tau
-tau = 10.0**(-2)#12.0
+tau = 10.0**(-10.)#12.0
 expNums_hist = getExpNums(tau, intermediate, startX, endX, nBins)
 
-genLifetimes = genNums_hist * expNums_hist
+#genLifetimes = genNums_hist * expNums_hist
 
 #scale genLifetimes
-enLifetimes = genLifetimes.Scale(0.001)
+#genLifetimes = genLifetimes.Scale(0.001)
 
 #draw hists
-c2 = ROOT.TCanvas("c2","c2", 1000, 800)
+#c2 = ROOT.TCanvas("c2","c2", 1000, 800)
 
-genNums_hist.SetLineColor(ROOT.kRed)
+#genNums_hist.SetLineColor(ROOT.kRed)
 #genNums_hist.SetFillColor(ROOT.kRed)
 #genNums_hist.SetFillStyle(3003)
-genNums_hist.Draw("same")
+#genNums_hist.Draw("same")
 
-expNums_hist.SetLineColor(ROOT.kBlue)
+#expNums_hist.SetLineColor(ROOT.kBlue)
 #expNums_hist.SetFillColor(ROOT.kBlue)
 #expNums_hist.SetFillStyle(3005)
-expNums_hist.Draw("same")
+#expNums_hist.Draw("same")
 
-genLifetimes.SetLineColor(ROOT.kBlack)
-genLifetimes.SetFillColor(ROOT.kBlack)
-genLifetimes.SetFillStyle(3003)
-genLifetimes.SetTitle("Product (scaled by 1/1000)")
-genLifetimes.Draw("hist same")
+#genLifetimes.SetLineColor(ROOT.kBlack)
+#genLifetimes.SetFillColor(ROOT.kBlack)
+#genLifetimes.SetFillStyle(3003)
+#genLifetimes.SetTitle("Product (scaled by 1/1000)")
+#genLifetimes.Draw("hist same")
 
-legend2 = c2.BuildLegend(0.7,0.7,0.9,0.9,"Distributions")
-genNums_hist.SetTitle("Generating lifetime distributions; #beta#gamma c#tau (1/MeV); N_{events}")
-c2.SetTitle("Generating lifetime distributions")
-c2.Draw()
-c2.SaveAs("genLifetimes.png")
+#legend2 = c2.BuildLegend(0.7,0.7,0.9,0.9,"Distributions")
+#genNums_hist.SetTitle("Generating lifetime distributions; #beta#gamma c#tau (1/MeV); N_{events}")
+#c2.SetTitle("Generating lifetime distributions")
+#c2.Draw()
+#c2.SaveAs("genLifetimes.png")
 
 #unscale genLifetimes
-genLifetimes.Scale(1000)
+#genLifetimes.Scale(1000)
 
 #get 'experimentat' \bega\gamma c\tau
-ksdist_hist = ROOT.TH1D("ksdist_hist","3D Kshort SV-PV separations; Distance [cm]; N_{events}", 100, 0, 50)
+#ksdist_hist = ROOT.TH1D("ksdist_hist","3D Kshort SV-PV separations; Distance [cm]; N_{events}", 100, 0, 50)
 
-events.toBegin()
-for event in events:
-	event.getByLabel("offlinePrimaryVertices", primaryVertices)
-	pv = primaryVertices.product()[0] #get the first PV
-	event.getByLabel("SecondaryVerticesFromLooseTracks", "Kshort", secondaryVertices)
-	for vertex in secondaryVertices.product():
-		dist = ( (pv.x() - vertex.vx())**2 + (pv.y() - vertex.vy())**2 + (pv.z() - vertex.vz())**2)**(0.5) #pythagoras
-		ksdist_hist.Fill(dist)
-		#print "got one!"
+#events.toBegin()
+#for event in events:
+#	event.getByLabel("offlinePrimaryVertices", primaryVertices)
+#	pv = primaryVertices.product()[0] #get the first PV
+#	event.getByLabel("SecondaryVerticesFromLooseTracks", "Kshort", secondaryVertices)
+#	for vertex in secondaryVertices.product():
+#		dist = ( (pv.x() - vertex.vx())**2 + (pv.y() - vertex.vy())**2 + (pv.z() - vertex.vz())**2)**(0.5) #pythagoras
+#		#ksdist_hist.Fill(dist)
+#		ksdist_hist.Fill(dist/100.) #try converting cm to m
 
-def normalize(hist):
-	hist.Scale(1./hist.Integral(0,100,"width"))
-	return hist
+#c_troubleshoot = ROOT.TCanvas( "c_troubleshoot", "c_troubleshoot", 900, 900 )
+#ksdist_hist.SetLineColor(ROOT.kGreen)
+#ksdist_hist.Draw("hist same")
+#ksbetagamma.SetLineColor(ROOT.kPink)
+#ksbetagamma.Draw("hist same")
+#c_troubleshoot.Draw()
+#c_troubleshoot.SaveAs("troubleshoot.png")
 
-exp_norm = normalize(ksdist_hist)
+#def normalize(hist):
+#	hist.Scale(1./hist.Integral(0,100,"width"))
+#	return hist
 
-gen_norm = normalize(genLifetimes)
+#exp_norm = normalize(ksdist_hist)
 
-c = ROOT.TCanvas( "c", "c", 800, 800 )
+#gen_norm = normalize(genLifetimes)
+
+
+#c = ROOT.TCanvas( "c", "c", 800, 800 )
 
 #ksdist_hist.Draw("hist same")
 #ksdist_hist.SetLineColor(ROOT.kRed)
 #ksdist_hist.SetFillStyle(3003)
 
-exp_norm.SetLineColor(ROOT.kRed)
-exp_norm.Draw("hist same")
+#exp_norm.SetLineColor(ROOT.kRed)
+#exp_norm.Draw("hist same")
 
 #genLifetimes.Draw("hist same")
 #genLifetimes.SetLineColor(ROOT.kBlue)
 #genLifetimes.SetFillStyle(3003)
 
-gen_norm.SetLineColor(ROOT.kBlue)
-gen_norm.Draw("hist same")
+#gen_norm.SetLineColor(ROOT.kBlue)
+#gen_norm.Draw("hist same")
 
-ksdist_hist.SetTitle("Generated and experimental lifetimes; #beta #gamma c #tau (1/MeV); N_{events}")
-c.SaveAs("exp_and_gen.png")
+#ksdist_hist.SetTitle("Generated and experimental lifetimes; #beta #gamma c #tau (1/MeV); N_{events}")
+#c.SaveAs("exp_and_gen.png")
 
 
-chi2 = genLifetimes.Chi2Test(ksdist_hist , "UU" )
-print "-------\nChi-squared value:  ",chi2
-print "-------\nexp_norm area:  ",exp_norm.Integral(),"    gen_norm area:  ",gen_norm.Integral()
+#chi2 = genLifetimes.Chi2Test(ksdist_hist , "UU" )
+#rint "-------\nChi-squared value:  ",chi2
+#print "-------\nexp_norm area:  ",exp_norm.Integral(),"    gen_norm area:  ",gen_norm.Integral()
 
 #to do:
 # - find chi-square comparison between getLifetimes and experiment
