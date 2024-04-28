@@ -129,7 +129,7 @@ pieceCan.SaveAs("ksbgfit.png")
 #start by generating 1,000 random numbers on the range startX to endX, quantized every stepsize
 startX = 0.0
 endX = 2.0 #40.0
-stepsize = 0.1 #1.0
+stepsize = 0.01 #1.0
 samplesize = 1000#ksNum
 
 fitted_piece = ksbetagamma.GetFunction("piecewise")
@@ -249,8 +249,31 @@ def getChi2(tau, ksdist_hist, samplesize, startX, endX):
 # - - - - - - - - - - - - - - - - - - - - #
 
 #establish the range of lifetime values over which we are searching
+n = 1000 #number of points
+#tau_range = np.linspace( 1.*(10.**(-11.)), 1.*(10.**(-9)), n, endpoint=True )
+tau_range = np.linspace( 0.0, 10.0*(10.**(-11)), n, endpoint=True )
 
+chi2_vals = [] #array of y-coords
+for lifetime in tau_range:
+	y = getChi2(tau, ksdist_hist, samplesize, startX, endX)
+	chi2_vals.append(y)
 
+chi2_dist = ROOT.TGraph( n )
+for i in range(n):
+	chi2_dist.SetPoint( i , tau_range[i], chi2_vals[i] )
+
+c_chi2dist = ROOT.TCanvas( "c_chi2dist", "c_chi2dist", 1200, 800 )
+chi2_dist.SetMarkerStyle(21)
+chi2_dist.SetMarkerSize(1)
+chi2_dist.Draw("AP")
+chi2_dist.SetTitle("Comparing generated and experimental distributions;Lifetime (s);#chi-square")
+c_chi2dist.Draw()
+c_chi2dist.SaveAs("chi2dist.png")
+
+# Questions:
+#	-- Why does the gen dist lifetime by inspection seem to be around a factor of 10 larger than expected?
+#	-- What is throwing all the "There is a bing in h1 with less than 1 event." errors in the Chi2Test?
+#	-- Why does the chi2 distribution look like a mess rather than following a trend?
 
 # # # # # # # # # # # # # # # # # # # # # #
 
