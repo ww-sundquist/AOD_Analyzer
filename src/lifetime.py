@@ -106,6 +106,8 @@ def piecewise_func(x, params):
 		y = H
 	return y
 
+#ANDERS: rootGenericPDF -- define function in root with quotes and @
+
 piecewise = ROOT.TF1("piecewise", piecewise_func, xMin, xMax, 3) #add no. params
 piecewise.SetParameters(1.0, 1.0, 1.0)
 piecefit = ksbetagamma.Fit(piecewise, "SR", "")
@@ -159,7 +161,7 @@ ln_hist = ROOT.TH1D("ln_hist", "Exponential decay distribution", int(round(nBins
 genDist_hist = ROOT.TH1D("genDist_hist", "Generated K-short lifetime disribution", int(round(nBins)), startX, endX) #generated k-short lifetimes
 
 #take a particular tau
-tau = 10*8.95**(-11.) #seconds
+#tau = 10*8.95**(-11.) #seconds
 
 #take a particular c\tau
 ctau = (2.998e-8)*(8.95e-11)
@@ -171,7 +173,9 @@ for i in range(samplesize):
 
 	c = 2.998*(10.0**8.0) #meters/second
 	#ln = -1.0 * c * tau * np.log( np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True )) )
-	ln = -1.0 * ctau * np.log( np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True )) )
+	ln = -1.0 * ctau * np.log( np.random.uniform(0.0, 1.0) )
+	#mytau = ctau/c
+	#ln = mytau*np.random.exponential( 1.0/mytau )
 	ln_hist.Fill(ln)
 	#print "ln : ",ln
 
@@ -220,7 +224,9 @@ def generateDist(ctau, samplesize, startX, endX):
 		bg = np.random.choice(xVals, p=xProbs) #\beta\gamma value generated from pdf of best fit
 
 		#c = 2.998*(10.0**8.0) #meters/second
-		ln = -1.0 * ctau * np.log( np.random.choice(np.linspace( 0.0, 1.0, samplesize, endpoint=True )) )
+		ln = -1.0 * ctau * np.log( np.random.uniform(0.0, 1.0) )
+		#mytau = ctau/c
+		#ln = mytau*np.random.exponential( 1.0/mytau )
 	
 		gen = bg*ln
 		genDist_hist.Fill(gen)
@@ -237,11 +243,11 @@ def getChi2(ctau, ksdist_hist, samplesize, startX, endX):
 #establish the range of lifetime values over which we are searching
 n = 1000 #number of points
 #ctau_range = np.linspace( 1.*(10.**(-11.)), 1.*(10.**(-9)), n, endpoint=True )
-ctau_range = np.linspace( 0.0, 0.1, n, endpoint=True )
+ctau_range = np.linspace( 0.0, 1.0, n, endpoint=True )
 
 chi2_vals = [] #array of y-coords
 for lifetime in ctau_range:
-	y = getChi2(ctau, ksdist_hist, samplesize, startX, endX)
+	y = getChi2(lifetime, ksdist_hist, samplesize, startX, endX)
 	chi2_vals.append(y)
 
 chi2_dist = ROOT.TGraph( n )
