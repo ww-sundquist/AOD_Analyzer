@@ -24,7 +24,7 @@ for event in events:
 		ksNum = ksNum + 1
 		#print "mass: ", mass #doublechecking units
 		#print "\nenergy: ", vertex.energy()
-		#print "\n(3-)momentum: ", three_momentum
+		#print "\n(3-)moment: ", three_momentum
 
 
 print "ksNum :  ",ksNum
